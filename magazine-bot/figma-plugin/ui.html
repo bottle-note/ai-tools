@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 12px;
+    color: #e0e0e0;
+    background: #2c2c2c;
+    padding: 12px;
+  }
+
+  h2 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #fff;
+  }
+
+  .config {
+    margin-bottom: 16px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .config label {
+    font-size: 11px;
+    color: #999;
+    white-space: nowrap;
+  }
+
+  input {
+    flex: 1;
+    padding: 6px 8px;
+    background: #1e1e1e;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-size: 11px;
+    outline: none;
+  }
+
+  input:focus {
+    border-color: #a259ff;
+  }
+
+  .issue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .issue-card {
+    background: #383838;
+    border-radius: 6px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .issue-card:hover {
+    background: #444;
+  }
+
+  .issue-card .title {
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+
+  .issue-card .meta {
+    font-size: 11px;
+    color: #888;
+  }
+
+  button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-primary {
+    background: #a259ff;
+    color: #fff;
+    width: 100%;
+  }
+
+  .btn-primary:hover {
+    background: #b57aff;
+  }
+
+  .btn-primary:disabled {
+    background: #555;
+    color: #888;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: #444;
+    color: #e0e0e0;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .btn-secondary:hover {
+    background: #555;
+  }
+
+  .status {
+    margin-top: 12px;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    display: none;
+  }
+
+  .status.info {
+    background: #1a3a5c;
+    color: #7db8f0;
+    display: block;
+  }
+
+  .status.success {
+    background: #1a3c1a;
+    color: #7cf07c;
+    display: block;
+  }
+
+  .status.error {
+    background: #3c1a1a;
+    color: #f07c7c;
+    display: block;
+  }
+
+  .card-preview {
+    margin: 8px 0;
+    padding: 8px;
+    background: #1e1e1e;
+    border-radius: 4px;
+    font-size: 11px;
+  }
+
+  .card-preview .card-item {
+    padding: 4px 0;
+    border-bottom: 1px solid #333;
+  }
+
+  .card-preview .card-item:last-child {
+    border-bottom: none;
+  }
+
+  .card-type {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-right: 6px;
+  }
+
+  .card-type.cover { background: #a259ff33; color: #a259ff; }
+  .card-type.content { background: #59a2ff33; color: #59a2ff; }
+  .card-type.closing { background: #ff925933; color: #ff9259; }
+
+  .hidden { display: none; }
+
+  .loading {
+    text-align: center;
+    padding: 20px;
+    color: #888;
+  }
+</style>
+</head>
+<body>
+  <h2>BottleNote Magazine</h2>
+
+  <div class="config">
+    <label>API URL</label>
+    <input type="text" id="apiUrl" value="http://localhost:3000" />
+  </div>
+
+  <div id="view-list">
+    <button class="btn-primary" onclick="loadIssues()">이슈 불러오기</button>
+    <div id="issueList" class="issue-list" style="margin-top: 12px;"></div>
+  </div>
+
+  <div id="view-detail" class="hidden">
+    <button class="btn-secondary" onclick="showList()" style="margin-top:0;margin-bottom:12px;">← 목록으로</button>
+    <div id="issueDetail"></div>
+    <div id="cardPreview" class="card-preview hidden"></div>
+    <button class="btn-primary" id="btnPopulate" onclick="populateCards()" style="margin-top:12px;" disabled>
+      배치 시작
+    </button>
+  </div>
+
+  <div id="status" class="status"></div>
+
+<script>
+  let currentIssueId = null;
+  let currentCards = null;
+
+  function getApiUrl() {
+    return document.getElementById('apiUrl').value.replace(/\/$/, '');
+  }
+
+  function setStatus(msg, type) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = 'status ' + type;
+  }
+
+  function showList() {
+    document.getElementById('view-list').classList.remove('hidden');
+    document.getElementById('view-detail').classList.add('hidden');
+    currentIssueId = null;
+    currentCards = null;
+  }
+
+  async function loadIssues() {
+    setStatus('이슈를 불러오는 중...', 'info');
+
+    try {
+      const res = await fetch(getApiUrl() + '/api/issues');
+      if (!res.ok) throw new Error('API 연결 실패');
+      const issues = await res.json();
+
+      const list = document.getElementById('issueList');
+      if (issues.length === 0) {
+        list.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">레이아웃 대기 중인 이슈가 없습니다.</div>';
+        setStatus('', '');
+        return;
+      }
+
+      list.innerHTML = issues.map(function(issue) {
+        return '<div class="issue-card" onclick="loadIssue(' + issue.id + ')">' +
+          '<div class="title">이슈 #' + issue.issueNumber + '</div>' +
+          '<div class="meta">' + new Date(issue.createdAt).toLocaleDateString('ko-KR') + '</div>' +
+        '</div>';
+      }).join('');
+
+      setStatus('', '');
+    } catch (e) {
+      setStatus('API 연결 실패: ' + e.message, 'error');
+    }
+  }
+
+  async function loadIssue(id) {
+    setStatus('데이터를 불러오는 중...', 'info');
+    currentIssueId = id;
+
+    try {
+      const res = await fetch(getApiUrl() + '/api/issues/' + id + '/layout');
+      if (!res.ok) throw new Error('데이터 로드 실패');
+      const data = await res.json();
+
+      currentCards = data.cards;
+
+      document.getElementById('view-list').classList.add('hidden');
+      document.getElementById('view-detail').classList.remove('hidden');
+
+      document.getElementById('issueDetail').innerHTML =
+        '<div style="margin-bottom:8px;">' +
+          '<div style="font-weight:600;color:#fff;font-size:13px;">이슈 #' + data.issueNumber + '</div>' +
+          '<div style="color:#a259ff;margin-top:2px;">' + data.topic.title + '</div>' +
+          '<div style="color:#888;font-size:11px;">' + data.topic.subtitle + '</div>' +
+        '</div>';
+
+      var preview = document.getElementById('cardPreview');
+      preview.classList.remove('hidden');
+      preview.innerHTML = data.cards.map(function(card) {
+        var hasImg = card.imageUrl ? ' | 🖼️' : '';
+        return '<div class="card-item">' +
+          '<span class="card-type ' + card.type + '">' + card.type + '</span>' +
+          card.heading + hasImg +
+        '</div>';
+      }).join('');
+
+      document.getElementById('btnPopulate').disabled = false;
+      setStatus(data.cards.length + '개 카드 준비 완료', 'success');
+    } catch (e) {
+      setStatus('데이터 로드 실패: ' + e.message, 'error');
+    }
+  }
+
+  function populateCards() {
+    if (!currentCards) return;
+
+    setStatus('Figma에 배치 중...', 'info');
+    document.getElementById('btnPopulate').disabled = true;
+
+    parent.postMessage({
+      pluginMessage: {
+        type: 'populate-template',
+        cards: currentCards
+      }
+    }, '*');
+  }
+
+  // Listen for messages from plugin code
+  window.onmessage = async function(event) {
+    var msg = event.data.pluginMessage;
+    if (!msg) return;
+
+    if (msg.type === 'populate-complete') {
+      setStatus('배치 완료! API에 완료 알림을 보내는 중...', 'info');
+
+      try {
+        var res = await fetch(getApiUrl() + '/api/issues/' + currentIssueId + '/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!res.ok) throw new Error('완료 알림 실패');
+
+        setStatus('모든 작업이 완료되었습니다!', 'success');
+      } catch (e) {
+        setStatus('배치는 완료되었지만 API 알림 실패: ' + e.message, 'error');
+      }
+    }
+  };
+</script>
+</body>
+</html>
