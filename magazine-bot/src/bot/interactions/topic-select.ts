@@ -29,7 +29,7 @@ export async function handleTopicButton(interaction: ButtonInteraction): Promise
   if (customId.startsWith('topic_regenerate_')) {
     await interaction.deferUpdate();
     await interaction.message.delete().catch(() => {});
-    await handleTopicSelection(issueId, channel);
+    await handleTopicSelection(issueId, channel, interaction.user.id);
     return;
   }
 

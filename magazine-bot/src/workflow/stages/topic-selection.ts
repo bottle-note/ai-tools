@@ -13,6 +13,7 @@ import { Stage } from '../machine.js';
 export async function handleTopicSelection(
   issueId: number,
   channel: TextChannel,
+  requestedByUserId?: string,
 ): Promise<Message> {
   const statusMsg = await channel.send('🔄 주제를 생성하고 있습니다...');
 
@@ -55,5 +56,14 @@ export async function handleTopicSelection(
 
   await statusMsg.delete().catch(() => {});
 
-  return channel.send({ embeds: [embed], components: [row] });
+  // 주제 생성 완료 시 요청자에게 알림
+  const mentionText = requestedByUserId
+    ? `<@${requestedByUserId}> 주제 생성이 완료되었습니다! 아래에서 선택해주세요.`
+    : undefined;
+
+  return channel.send({
+    content: mentionText,
+    embeds: [embed],
+    components: [row],
+  });
 }

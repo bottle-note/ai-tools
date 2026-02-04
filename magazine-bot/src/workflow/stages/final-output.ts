@@ -16,6 +16,7 @@ interface ContentStageData {
 }
 
 interface FinalOutputData {
+  caption: string;
   hashtags: string[];
 }
 
@@ -31,11 +32,12 @@ export async function handleFinalOutput(
 
   const content = JSON.parse(contentData.data_json) as ContentStageData;
 
-  // hashtags는 topic에 이미 포함되어 있음 (주제 선정 시 AI가 함께 생성)
+  // caption과 hashtags는 topic에 이미 포함되어 있음 (주제 선정 시 AI가 함께 생성)
+  const caption = content.topic.caption;
   const hashtags = content.topic.hashtags;
 
   // Save final output data
-  const finalData: FinalOutputData = { hashtags };
+  const finalData: FinalOutputData = { caption, hashtags };
   saveStageData(issueId, Stage.FINAL_OUTPUT, finalData);
 
   // Get issue number for display
@@ -49,13 +51,18 @@ export async function handleFinalOutput(
     .setColor(0x00ff00)
     .addFields(
       {
-        name: '해시태그',
+        name: '📝 캡션',
+        value: caption,
+        inline: false,
+      },
+      {
+        name: '🏷️ 해시태그',
         value: hashtags.join(' '),
         inline: false,
       },
     )
     .setFooter({
-      text: 'Figma에서 카드 이미지를 내보내고, 위 해시태그와 함께 인스타그램에 업로드하세요',
+      text: 'Figma에서 카드 이미지를 내보내고, 위 내용과 함께 인스타그램에 업로드하세요',
     });
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(

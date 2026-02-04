@@ -34,6 +34,7 @@ export interface Topic {
   description: string;
   cardStructure: string[];
   cards: Card[];        // 카드 콘텐츠 (AI 호출 통합)
+  caption: string;      // 인스타그램 캡션 (AI 호출 통합)
   hashtags: string[];   // 해시태그 (AI 호출 통합)
 }
 

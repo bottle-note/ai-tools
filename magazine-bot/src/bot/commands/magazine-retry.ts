@@ -68,7 +68,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         await executeWithRetry(
           issue.id,
           currentStage,
-          () => handleTopicSelection(issue!.id, channel as TextChannel),
+          () => handleTopicSelection(issue!.id, channel as TextChannel, interaction.user.id),
         );
         break;
       }

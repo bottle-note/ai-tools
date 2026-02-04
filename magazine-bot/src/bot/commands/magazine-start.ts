@@ -36,6 +36,6 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const threadUrl = `https://discord.com/channels/${interaction.guildId}/${thread.id}`;
   updateIssueThreadUrl(issue.id, threadUrl);
 
-  // Start topic selection in the thread
-  await handleTopicSelection(issue.id, thread);
+  // Start topic selection in the thread (pass user ID for notification)
+  await handleTopicSelection(issue.id, thread, interaction.user.id);
 }
