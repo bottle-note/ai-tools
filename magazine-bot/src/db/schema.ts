@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3';
 
 export function initDatabase(db: Database.Database): void {
+  // Create tables
   db.exec(`
     CREATE TABLE IF NOT EXISTS magazine_issues (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,4 +43,19 @@ export function initDatabase(db: Database.Database): void {
       FOREIGN KEY (issue_id) REFERENCES magazine_issues(id)
     );
   `);
+
+  // Run migrations for existing databases
+  runMigrations(db);
+}
+
+function runMigrations(db: Database.Database): void {
+  // Get existing columns in magazine_issues
+  const columns = db.prepare("PRAGMA table_info(magazine_issues)").all() as { name: string }[];
+  const columnNames = new Set(columns.map(c => c.name));
+
+  // Migration: Add thread_url column if missing
+  if (!columnNames.has('thread_url')) {
+    db.exec('ALTER TABLE magazine_issues ADD COLUMN thread_url TEXT');
+    console.log('Migration: Added thread_url column to magazine_issues');
+  }
 }
