@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, type TextChannel } from 'discord.js';
-import { getActiveIssue, updateIssueStage, createIssue, updateIssueThread } from '../../db/index.js';
+import { getActiveIssue, updateIssueStage, createIssue, updateIssueThread, updateIssueThreadUrl } from '../../db/index.js';
 import { handleTopicSelection } from '../../workflow/stages/topic-selection.js';
 
 function cancelIssue(id: number): void {
@@ -31,8 +31,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     autoArchiveDuration: 10080, // 7 days
   });
 
-  // Update issue with thread ID
+  // Update issue with thread ID and URL
   updateIssueThread(issue.id, thread.id);
+  const threadUrl = `https://discord.com/channels/${interaction.guildId}/${thread.id}`;
+  updateIssueThreadUrl(issue.id, threadUrl);
 
   // Start topic selection in the thread
   await handleTopicSelection(issue.id, thread);

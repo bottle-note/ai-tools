@@ -7,6 +7,7 @@ export interface Issue {
   stage: string;
   channel_id: string;
   thread_id: string | null;
+  thread_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -105,6 +106,13 @@ export function updateIssueThread(id: number, threadId: string): void {
     "UPDATE magazine_issues SET thread_id = ?, updated_at = datetime('now') WHERE id = ?"
   );
   stmt.run(threadId, id);
+}
+
+export function updateIssueThreadUrl(id: number, threadUrl: string): void {
+  const stmt = db.prepare(
+    "UPDATE magazine_issues SET thread_url = ?, updated_at = datetime('now') WHERE id = ?"
+  );
+  stmt.run(threadUrl, id);
 }
 
 // Published Topics functions

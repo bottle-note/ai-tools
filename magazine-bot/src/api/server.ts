@@ -66,6 +66,7 @@ export function createApiServer(
         subtitle: content.topic.subtitle,
       },
       cards,
+      threadUrl: issue.thread_url ?? null,
     });
   });
 

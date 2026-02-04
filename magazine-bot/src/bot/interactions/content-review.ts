@@ -13,8 +13,6 @@ import {
 import { getIssue, getStageData, approveStageData, saveStageData } from '../../db/index.js';
 import { advanceStage } from '../../workflow/engine.js';
 import { Stage } from '../../workflow/machine.js';
-import { handleContentWriting } from '../../workflow/stages/content-writing.js';
-import { executeWithRetry } from '../../workflow/recovery.js';
 import type { Card, Topic } from '../../services/ai.js';
 
 export async function handleContentButton(interaction: ButtonInteraction): Promise<void> {
@@ -56,29 +54,13 @@ export async function handleContentButton(interaction: ButtonInteraction): Promi
     return;
   }
 
-  // Regenerate
+  // Regenerate - now requires going back to topic selection
   if (customId.startsWith('content_regenerate_')) {
-    await interaction.deferUpdate();
-    await interaction.message.delete().catch(() => {});
-
-    try {
-      await executeWithRetry(
-        issueId,
-        Stage.CONTENT_WRITING,
-        () => handleContentWriting(issueId, channel, topic),
-        async (attempt, maxRetries, _error, nextDelayMs) => {
-          await channel.send(
-            `⚠️ 콘텐츠 재생성 중 오류 발생. 재시도 중... (${attempt}/${maxRetries})\n` +
-            `다음 시도까지 ${Math.round(nextDelayMs / 1000)}초`
-          );
-        }
-      );
-    } catch (error) {
-      await channel.send(
-        `❌ 콘텐츠 재생성에 실패했습니다: ${(error as Error).message}\n` +
-        `\`/magazine-retry\` 명령어로 재시도하거나 관리자에게 문의하세요.`
-      );
-    }
+    await interaction.reply({
+      content: '💡 콘텐츠는 주제 선정 시 함께 생성됩니다.\n' +
+        '새로운 콘텐츠를 원하시면 `/magazine-reset stage:주제 선정` 명령어로 주제 선정 단계로 돌아가 주세요.',
+      ephemeral: true,
+    });
     return;
   }
 

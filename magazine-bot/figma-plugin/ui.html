@@ -181,6 +181,29 @@
     padding: 20px;
     color: #888;
   }
+
+  .thread-link {
+    display: block;
+    margin-top: 8px;
+    padding: 8px;
+    background: #1a3a5c;
+    border-radius: 4px;
+    color: #7db8f0;
+    text-decoration: none;
+    font-size: 11px;
+    text-align: center;
+  }
+
+  .thread-link:hover {
+    background: #235080;
+  }
+
+  .tip {
+    font-size: 10px;
+    color: #888;
+    margin-top: 8px;
+    line-height: 1.4;
+  }
 </style>
 </head>
 <body>
@@ -203,6 +226,7 @@
     <button class="btn-primary" id="btnPopulate" onclick="populateCards()" style="margin-top:12px;" disabled>
       배치 시작
     </button>
+    <div class="tip">💡 프레임을 선택한 상태에서 배치하면 해당 위치 옆에 카드가 생성됩니다.</div>
   </div>
 
   <div id="status" class="status"></div>
@@ -270,11 +294,16 @@
       document.getElementById('view-list').classList.add('hidden');
       document.getElementById('view-detail').classList.remove('hidden');
 
+      var threadLink = data.threadUrl
+        ? '<a href="' + data.threadUrl + '" target="_blank" class="thread-link">📋 Discord에서 해시태그 확인</a>'
+        : '';
+
       document.getElementById('issueDetail').innerHTML =
         '<div style="margin-bottom:8px;">' +
           '<div style="font-weight:600;color:#fff;font-size:13px;">이슈 #' + data.issueNumber + '</div>' +
           '<div style="color:#a259ff;margin-top:2px;">' + data.topic.title + '</div>' +
           '<div style="color:#888;font-size:11px;">' + data.topic.subtitle + '</div>' +
+          threadLink +
         '</div>';
 
       var preview = document.getElementById('cardPreview');

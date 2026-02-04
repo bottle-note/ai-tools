@@ -8,6 +8,7 @@ export function initDatabase(db: Database.Database): void {
       stage TEXT NOT NULL DEFAULT 'TOPIC_SELECTION',
       channel_id TEXT NOT NULL,
       thread_id TEXT,
+      thread_url TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );

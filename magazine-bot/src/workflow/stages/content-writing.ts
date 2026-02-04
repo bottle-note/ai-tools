@@ -6,7 +6,7 @@ import {
   type TextChannel,
   type Message,
 } from 'discord.js';
-import { generateContent, type Topic, type Card } from '../../services/ai.js';
+import { type Topic, type Card } from '../../services/ai.js';
 import { saveStageData } from '../../db/index.js';
 import { Stage } from '../machine.js';
 
@@ -15,9 +15,8 @@ export async function handleContentWriting(
   channel: TextChannel,
   topic: Topic,
 ): Promise<Message> {
-  const statusMsg = await channel.send('✍️ 콘텐츠를 작성하고 있습니다...');
-
-  const cards = await generateContent(topic);
+  // topic.cards는 이미 AI 호출 시 생성됨 (주제 선정 단계에서 통합 생성)
+  const cards = topic.cards;
 
   saveStageData(issueId, Stage.CONTENT_WRITING, { cards, topic });
 
@@ -49,8 +48,6 @@ export async function handleContentWriting(
       .setLabel('🔄 재생성')
       .setStyle(ButtonStyle.Secondary),
   );
-
-  await statusMsg.delete().catch(() => {});
 
   return channel.send({ embeds, components: [row] });
 }

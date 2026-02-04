@@ -1,12 +1,8 @@
 import { type ButtonInteraction, type TextChannel } from 'discord.js';
-import { getIssue, getStageData, approveStageData, saveStageData, publishTopic } from '../../db/index.js';
+import { getIssue, getStageData, approveStageData, publishTopic, updateIssueThreadUrl } from '../../db/index.js';
 import { advanceStage } from '../../workflow/engine.js';
 import { Stage } from '../../workflow/machine.js';
-import { generateCaption, type Card, type Topic } from '../../services/ai.js';
-
-interface ContentStageData {
-  cards: Card[];
-}
+import type { Topic } from '../../services/ai.js';
 
 export async function handleFinalButton(
   interaction: ButtonInteraction,
@@ -49,43 +45,16 @@ export async function handleFinalButton(
 
     await interaction.message.edit({ components: [] });
 
+    // Save thread URL for Figma plugin reference
+    if (issue.thread_id && interaction.guildId) {
+      const threadUrl = `https://discord.com/channels/${interaction.guildId}/${issue.thread_id}`;
+      updateIssueThreadUrl(issueId, threadUrl);
+    }
+
     const channel = interaction.channel as TextChannel;
     const issueNumber = issue.issue_number;
     await channel.send(`🎉 BottleNote #${issueNumber} 매거진이 완료되었습니다!`);
 
     await advanceStage(issueId);
-  }
-
-  // Handle caption regeneration
-  else if (customId.startsWith('final_regenerate_')) {
-    // Get content data
-    const contentData = getStageData(issueId, Stage.CONTENT_WRITING);
-    if (!contentData || contentData.status !== 'approved') {
-      await interaction.followUp({
-        content: '콘텐츠 데이터를 찾을 수 없습니다.',
-        ephemeral: true,
-      });
-      return;
-    }
-
-    const content = JSON.parse(contentData.data_json) as ContentStageData;
-
-    const channel = interaction.channel as TextChannel;
-    await channel.send('🔄 캡션을 재생성하는 중...');
-
-    // Re-generate caption
-    const { caption, hashtags } = await generateCaption(content.cards);
-
-    // Save new caption data
-    saveStageData(issueId, Stage.FINAL_OUTPUT, { caption, hashtags });
-
-    // Re-display the final output
-    const { handleFinalOutput } = await import(
-      '../../workflow/stages/final-output.js'
-    );
-    await handleFinalOutput(issueId, channel);
-
-    // Remove old message buttons
-    await interaction.message.edit({ components: [] });
   }
 }

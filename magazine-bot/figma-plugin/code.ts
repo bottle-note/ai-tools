@@ -20,6 +20,13 @@ figma.ui.onmessage = async (msg: { type: string; cards?: CardData[] }) => {
 async function populateTemplate(cards: CardData[]) {
   const page = figma.currentPage;
 
+  // Check if user has selected a frame to use as reference position
+  const selection = figma.currentPage.selection;
+  let selectedFrame: FrameNode | null = null;
+  if (selection.length > 0 && selection[0].type === 'FRAME') {
+    selectedFrame = selection[0] as FrameNode;
+  }
+
   for (let i = 0; i < cards.length; i++) {
     const card = cards[i];
     let templateName: string;
@@ -41,7 +48,16 @@ async function populateTemplate(cards: CardData[]) {
     // Clone template
     const clone = template.clone();
     clone.name = `Card-${i + 1}-${card.type}`;
-    clone.x = template.x + (i + 1) * (template.width + 40);
+
+    // Position based on selected frame or template
+    if (selectedFrame) {
+      // Place cards to the right of the selected frame
+      clone.x = selectedFrame.x + selectedFrame.width + 40 + i * (template.width + 40);
+      clone.y = selectedFrame.y;
+    } else {
+      // Default: place cards to the right of the template
+      clone.x = template.x + (i + 1) * (template.width + 40);
+    }
 
     // Replace text nodes
     const textNodes = clone.findAll((n) => n.type === 'TEXT') as TextNode[];
