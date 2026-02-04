@@ -1,4 +1,4 @@
-import { createIssue, getIssue, updateIssueStage } from '../db/index.js';
+import { createIssue, getIssue, updateIssueStage, getStageData } from '../db/index.js';
 import type { Issue } from '../db/index.js';
 import { getNextStage, canReject, isComplete, Stage } from './machine.js';
 import { client } from '../bot/client.js';
@@ -8,22 +8,42 @@ export function startIssue(channelId: string): Issue {
   return createIssue(channelId);
 }
 
+function getTopicTitle(issueId: number): string | null {
+  const stageData = getStageData(issueId, Stage.TOPIC_SELECTION);
+  if (!stageData) return null;
+
+  try {
+    const data = JSON.parse(stageData.data_json);
+    return data.selectedTopic?.title || null;
+  } catch {
+    return null;
+  }
+}
+
 async function updateThreadName(issue: Issue, stage: Stage): Promise<void> {
   if (!issue.thread_id) return;
 
   const stageNames: Record<Stage, string> = {
     [Stage.TOPIC_SELECTION]: '주제선정',
     [Stage.CONTENT_WRITING]: '콘텐츠작성',
-    [Stage.IMAGE_GENERATION]: '이미지생성',
     [Stage.FIGMA_LAYOUT]: '피그마레이아웃',
     [Stage.FINAL_OUTPUT]: '최종산출물',
-    [Stage.COMPLETE]: '✅ 완료',
+    [Stage.COMPLETE]: '완료',
   };
 
   try {
     const thread = await client.channels.fetch(issue.thread_id) as ThreadChannel;
     if (thread && thread.isThread()) {
-      await thread.setName(`매거진 #${issue.issue_number} — ${stageNames[stage]}`);
+      const topicTitle = getTopicTitle(issue.id);
+      const stageSuffix = stage === Stage.COMPLETE ? ' ✅' : ` — ${stageNames[stage]}`;
+
+      if (topicTitle) {
+        // Use topic title once selected
+        await thread.setName(`${topicTitle}${stageSuffix}`);
+      } else {
+        // Fallback for topic selection stage
+        await thread.setName(`매거진 #${issue.issue_number} — ${stageNames[stage]}`);
+      }
     }
   } catch (error) {
     console.error('Failed to update thread name:', error);

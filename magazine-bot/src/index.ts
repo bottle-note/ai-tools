@@ -2,9 +2,11 @@ import { config } from './config.js';
 import { client } from './bot/client.js';
 import { ChatInputCommandInteraction, Events, Interaction } from 'discord.js';
 import * as magazineStart from './bot/commands/magazine-start.js';
+import * as magazineRetry from './bot/commands/magazine-retry.js';
+import * as magazineReset from './bot/commands/magazine-reset.js';
+import * as magazineCancel from './bot/commands/magazine-cancel.js';
 import { handleTopicButton } from './bot/interactions/topic-select.js';
 import { handleContentButton, handleContentModal } from './bot/interactions/content-review.js';
-import { handleImageButton, handleImageSelect } from './bot/interactions/image-collect.js';
 import { handleLayoutButton } from './bot/interactions/layout-ready.js';
 import { handleFinalButton } from './bot/interactions/final-complete.js';
 import { createApiServer } from './api/server.js';
@@ -15,6 +17,9 @@ const commands = new Map<string, {
 }>();
 
 commands.set(magazineStart.data.name, magazineStart);
+commands.set(magazineRetry.data.name, magazineRetry);
+commands.set(magazineReset.data.name, magazineReset);
+commands.set(magazineCancel.data.name, magazineCancel);
 
 client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   // Slash commands
@@ -47,8 +52,6 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
         await handleTopicButton(interaction);
       } else if (id.startsWith('content_')) {
         await handleContentButton(interaction);
-      } else if (id.startsWith('image_')) {
-        await handleImageButton(interaction);
       } else if (id.startsWith('layout_')) {
         await handleLayoutButton(interaction);
       } else if (id.startsWith('final_')) {
@@ -79,21 +82,6 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     return;
   }
 
-  // String select menu interactions
-  if (interaction.isStringSelectMenu()) {
-    try {
-      const id = interaction.customId;
-      if (id.startsWith('image_assign_')) {
-        await handleImageSelect(interaction);
-      }
-    } catch (error) {
-      console.error('Error handling select menu interaction:', error);
-      if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: '처리 중 오류가 발생했습니다.', ephemeral: true });
-      }
-    }
-    return;
-  }
 });
 
 // Start API server for Figma plugin bridge

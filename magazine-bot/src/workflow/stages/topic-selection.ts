@@ -7,9 +7,8 @@ import {
   type Message,
 } from 'discord.js';
 import { generateTopics, type Topic } from '../../services/ai.js';
-import { saveStageData } from '../../db/index.js';
+import { saveStageData, getPublishedTopicTitles } from '../../db/index.js';
 import { Stage } from '../machine.js';
-import { getPublishedTopics } from '../../data/topics-manager.js';
 
 export async function handleTopicSelection(
   issueId: number,
@@ -17,7 +16,7 @@ export async function handleTopicSelection(
 ): Promise<Message> {
   const statusMsg = await channel.send('🔄 주제를 생성하고 있습니다...');
 
-  const recentTopics = getPublishedTopics();
+  const recentTopics = getPublishedTopicTitles();
   const topics = await generateTopics({ recentTopics });
 
   saveStageData(issueId, Stage.TOPIC_SELECTION, { topics });

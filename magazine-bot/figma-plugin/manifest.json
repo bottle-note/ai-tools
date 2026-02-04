@@ -8,6 +8,7 @@
   "enableProposedApi": false,
   "editorType": ["figma"],
   "networkAccess": {
-    "allowedDomains": ["*"]
+    "allowedDomains": ["*"],
+    "reasoning": "Connects to the BottleNote Magazine API server (user-configurable URL) to fetch magazine card data for Figma layout automation"
   }
 }

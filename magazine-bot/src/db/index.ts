@@ -20,7 +20,25 @@ export interface StageData {
   created_at: string;
 }
 
-const db: DatabaseType = new Database('./bottlenote.db');
+export interface PublishedTopic {
+  id: number;
+  issue_id: number;
+  topic_title: string;
+  published_at: string;
+}
+
+export interface StageError {
+  id: number;
+  issue_id: number;
+  stage: string;
+  error_message: string;
+  retry_count: number;
+  resolved_at: string | null;
+  created_at: string;
+}
+
+const dbPath = process.env.DATABASE_PATH || './bottlenote.db';
+const db: DatabaseType = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 initDatabase(db);
 
@@ -87,4 +105,56 @@ export function updateIssueThread(id: number, threadId: string): void {
     "UPDATE magazine_issues SET thread_id = ?, updated_at = datetime('now') WHERE id = ?"
   );
   stmt.run(threadId, id);
+}
+
+// Published Topics functions
+export function publishTopic(issueId: number, topicTitle: string): void {
+  const stmt = db.prepare(
+    'INSERT OR IGNORE INTO published_topics (issue_id, topic_title) VALUES (?, ?)'
+  );
+  stmt.run(issueId, topicTitle);
+}
+
+export function isTopicPublished(title: string): boolean {
+  const stmt = db.prepare('SELECT id FROM published_topics WHERE topic_title = ?');
+  return stmt.get(title) !== undefined;
+}
+
+export function getPublishedTopicTitles(): string[] {
+  const stmt = db.prepare('SELECT topic_title FROM published_topics ORDER BY published_at DESC');
+  const rows = stmt.all() as { topic_title: string }[];
+  return rows.map(r => r.topic_title);
+}
+
+// Stage Error functions
+export function recordStageError(issueId: number, stage: string, errorMessage: string): number {
+  const stmt = db.prepare(
+    'INSERT INTO stage_errors (issue_id, stage, error_message) VALUES (?, ?, ?)'
+  );
+  const result = stmt.run(issueId, stage, errorMessage);
+  return Number(result.lastInsertRowid);
+}
+
+export function incrementRetryCount(errorId: number): void {
+  const stmt = db.prepare('UPDATE stage_errors SET retry_count = retry_count + 1 WHERE id = ?');
+  stmt.run(errorId);
+}
+
+export function markErrorResolved(errorId: number): void {
+  const stmt = db.prepare("UPDATE stage_errors SET resolved_at = datetime('now') WHERE id = ?");
+  stmt.run(errorId);
+}
+
+export function getUnresolvedErrors(issueId: number): StageError[] {
+  const stmt = db.prepare(
+    'SELECT * FROM stage_errors WHERE issue_id = ? AND resolved_at IS NULL ORDER BY created_at DESC'
+  );
+  return stmt.all(issueId) as StageError[];
+}
+
+export function getLatestUnresolvedError(issueId: number, stage: string): StageError | null {
+  const stmt = db.prepare(
+    'SELECT * FROM stage_errors WHERE issue_id = ? AND stage = ? AND resolved_at IS NULL ORDER BY created_at DESC LIMIT 1'
+  );
+  return (stmt.get(issueId, stage) as StageError) ?? null;
 }

@@ -14,6 +14,7 @@ import { getIssue, getStageData, approveStageData, saveStageData } from '../../d
 import { advanceStage } from '../../workflow/engine.js';
 import { Stage } from '../../workflow/machine.js';
 import { handleContentWriting } from '../../workflow/stages/content-writing.js';
+import { executeWithRetry } from '../../workflow/recovery.js';
 import type { Card, Topic } from '../../services/ai.js';
 
 export async function handleContentButton(interaction: ButtonInteraction): Promise<void> {
@@ -46,12 +47,12 @@ export async function handleContentButton(interaction: ButtonInteraction): Promi
     await interaction.deferUpdate();
     approveStageData(stageData.id);
     await interaction.message.edit({ components: [] });
-    await channel.send('✅ 콘텐츠가 승인되었습니다. 최종 산출물을 생성합니다.');
+    await channel.send('✅ 콘텐츠가 승인되었습니다. Figma 레이아웃을 준비합니다.');
     await advanceStage(issueId);
 
-    // Trigger final output stage
-    const { handleFinalOutput } = await import('../../workflow/stages/final-output.js');
-    await handleFinalOutput(issueId, channel);
+    // Trigger figma layout stage
+    const { handleFigmaLayout } = await import('../../workflow/stages/figma-layout.js');
+    await handleFigmaLayout(issueId, channel);
     return;
   }
 
@@ -59,7 +60,25 @@ export async function handleContentButton(interaction: ButtonInteraction): Promi
   if (customId.startsWith('content_regenerate_')) {
     await interaction.deferUpdate();
     await interaction.message.delete().catch(() => {});
-    await handleContentWriting(issueId, channel, topic);
+
+    try {
+      await executeWithRetry(
+        issueId,
+        Stage.CONTENT_WRITING,
+        () => handleContentWriting(issueId, channel, topic),
+        async (attempt, maxRetries, _error, nextDelayMs) => {
+          await channel.send(
+            `⚠️ 콘텐츠 재생성 중 오류 발생. 재시도 중... (${attempt}/${maxRetries})\n` +
+            `다음 시도까지 ${Math.round(nextDelayMs / 1000)}초`
+          );
+        }
+      );
+    } catch (error) {
+      await channel.send(
+        `❌ 콘텐츠 재생성에 실패했습니다: ${(error as Error).message}\n` +
+        `\`/magazine-retry\` 명령어로 재시도하거나 관리자에게 문의하세요.`
+      );
+    }
     return;
   }
 
@@ -92,13 +111,19 @@ function buildContentEmbeds(cards: Card[]): EmbedBuilder[] {
     const typeLabel =
       card.type === 'cover' ? '📕 커버' : card.type === 'closing' ? '📗 마무리' : '📄 본문';
 
-    return new EmbedBuilder()
+    const embed = new EmbedBuilder()
       .setTitle(`${typeLabel} | 카드 ${index + 1}`)
       .addFields(
         { name: '제목', value: card.heading, inline: false },
         { name: '본문', value: card.body, inline: false },
       )
       .setColor(card.type === 'cover' ? 0xd4a574 : card.type === 'closing' ? 0x8b6914 : 0xf5e6d0);
+
+    if (card.imageRef) {
+      embed.setFooter({ text: `🔗 ${card.imageRef}` });
+    }
+
+    return embed;
   });
 }
 

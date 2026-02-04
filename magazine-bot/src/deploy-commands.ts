@@ -1,8 +1,16 @@
 import { REST, Routes } from 'discord.js';
 import { config } from './config.js';
 import { data as magazineStartData } from './bot/commands/magazine-start.js';
+import { data as magazineRetryData } from './bot/commands/magazine-retry.js';
+import { data as magazineResetData } from './bot/commands/magazine-reset.js';
+import { data as magazineCancelData } from './bot/commands/magazine-cancel.js';
 
-const commands = [magazineStartData.toJSON()];
+const commands = [
+  magazineStartData.toJSON(),
+  magazineRetryData.toJSON(),
+  magazineResetData.toJSON(),
+  magazineCancelData.toJSON(),
+];
 
 const rest = new REST({ version: '10' }).setToken(config.DISCORD_TOKEN);
 

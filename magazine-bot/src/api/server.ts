@@ -6,12 +6,6 @@ import { Stage } from '../workflow/machine.js';
 import type { Card } from '../services/ai.js';
 import type { Issue } from '../db/index.js';
 
-interface ImageStageData {
-  cards: Card[];
-  prompts: string[];
-  imageMapping: Record<number, string>;
-}
-
 interface ContentStageData {
   topic: { title: string; subtitle: string };
   cards: Card[];
@@ -25,7 +19,6 @@ export function createApiServer(
   app.use(cors());
   app.use(express.json());
 
-  // List issues in FIGMA_LAYOUT stage
   app.get('/api/issues', (_req, res) => {
     const stmt = db.prepare(
       "SELECT * FROM magazine_issues WHERE stage = ? ORDER BY created_at DESC",
@@ -42,7 +35,6 @@ export function createApiServer(
     );
   });
 
-  // Get layout data for an issue
   app.get('/api/issues/:id/layout', (req, res) => {
     const issueId = parseInt(req.params.id, 10);
     const issue = getIssue(issueId);
@@ -52,7 +44,6 @@ export function createApiServer(
       return;
     }
 
-    // Get content data (text)
     const contentData = getStageData(issueId, Stage.CONTENT_WRITING);
     if (!contentData) {
       res.status(404).json({ error: '콘텐츠 데이터를 찾을 수 없습니다.' });
@@ -61,18 +52,11 @@ export function createApiServer(
 
     const content = JSON.parse(contentData.data_json) as ContentStageData;
 
-    // Get image data (image URLs)
-    const imageData = getStageData(issueId, Stage.IMAGE_GENERATION);
-    const images = imageData
-      ? (JSON.parse(imageData.data_json) as ImageStageData)
-      : null;
-
-    // Combine cards with image URLs
-    const cards = content.cards.map((card, idx) => ({
+    const cards = content.cards.map((card) => ({
       type: card.type,
       heading: card.heading,
       body: card.body,
-      imageUrl: images?.imageMapping[idx] ?? null,
+      imageRef: card.imageRef ?? null,
     }));
 
     res.json({
@@ -85,7 +69,6 @@ export function createApiServer(
     });
   });
 
-  // Mark layout as complete
   app.post('/api/issues/:id/complete', (req, res) => {
     const issueId = parseInt(req.params.id, 10);
     const issue = getIssue(issueId);
@@ -100,7 +83,6 @@ export function createApiServer(
       return;
     }
 
-    // Approve stage data and advance
     const stageData = getStageData(issueId, Stage.FIGMA_LAYOUT);
     if (stageData) {
       approveStageData(stageData.id);
@@ -108,7 +90,6 @@ export function createApiServer(
 
     advanceStage(issueId);
 
-    // Notify via callback
     if (onLayoutComplete) {
       onLayoutComplete(issueId);
     }

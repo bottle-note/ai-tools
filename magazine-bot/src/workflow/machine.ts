@@ -1,7 +1,6 @@
 export const Stage = {
   TOPIC_SELECTION: 'TOPIC_SELECTION',
   CONTENT_WRITING: 'CONTENT_WRITING',
-  IMAGE_GENERATION: 'IMAGE_GENERATION',
   FIGMA_LAYOUT: 'FIGMA_LAYOUT',
   FINAL_OUTPUT: 'FINAL_OUTPUT',
   COMPLETE: 'COMPLETE',
@@ -16,8 +15,7 @@ interface Transition {
 
 export const TRANSITIONS: Record<string, Transition> = {
   [Stage.TOPIC_SELECTION]: { next: Stage.CONTENT_WRITING, canReject: true },
-  [Stage.CONTENT_WRITING]: { next: Stage.FINAL_OUTPUT, canReject: true },
-  [Stage.IMAGE_GENERATION]: { next: Stage.FIGMA_LAYOUT, canReject: true },
+  [Stage.CONTENT_WRITING]: { next: Stage.FIGMA_LAYOUT, canReject: true },
   [Stage.FIGMA_LAYOUT]: { next: Stage.FINAL_OUTPUT, canReject: true },
   [Stage.FINAL_OUTPUT]: { next: Stage.COMPLETE, canReject: false },
 };

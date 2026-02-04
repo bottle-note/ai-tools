@@ -1,4 +1,4 @@
-import { type Client, type TextChannel, EmbedBuilder } from 'discord.js';
+import { type Client, type TextChannel, type ThreadChannel, EmbedBuilder } from 'discord.js';
 import { getIssue } from '../db/index.js';
 
 export async function onLayoutComplete(
@@ -12,9 +12,11 @@ export async function onLayoutComplete(
   }
 
   try {
-    const channel = (await client.channels.fetch(issue.channel_id)) as TextChannel;
+    // Use thread if available, otherwise fall back to channel
+    const targetChannelId = issue.thread_id || issue.channel_id;
+    const channel = (await client.channels.fetch(targetChannelId)) as TextChannel | ThreadChannel;
     if (!channel) {
-      console.error(`[figma-bridge] Channel ${issue.channel_id} not found`);
+      console.error(`[figma-bridge] Channel/Thread ${targetChannelId} not found`);
       return;
     }
 

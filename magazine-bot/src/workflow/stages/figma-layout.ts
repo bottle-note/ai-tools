@@ -10,12 +10,6 @@ import { getStageData, saveStageData } from '../../db/index.js';
 import { Stage } from '../machine.js';
 import type { Card } from '../../services/ai.js';
 
-interface ImageStageData {
-  cards: Card[];
-  prompts: string[];
-  imageMapping: Record<number, string>;
-}
-
 interface ContentStageData {
   topic: { title: string; subtitle: string };
   cards: Card[];
@@ -25,7 +19,6 @@ export async function handleFigmaLayout(
   issueId: number,
   channel: TextChannel,
 ): Promise<Message> {
-  // Get content data
   const contentData = getStageData(issueId, Stage.CONTENT_WRITING);
   if (!contentData || contentData.status !== 'approved') {
     throw new Error('Content writing stage not approved');
@@ -33,18 +26,9 @@ export async function handleFigmaLayout(
 
   const content = JSON.parse(contentData.data_json) as ContentStageData;
 
-  // Get image data
-  const imageData = getStageData(issueId, Stage.IMAGE_GENERATION);
-  if (!imageData || imageData.status !== 'approved') {
-    throw new Error('Image generation stage not approved');
-  }
-
-  const images = JSON.parse(imageData.data_json) as ImageStageData;
-
-  // Build card summary
   const cardSummary = content.cards.map((card, idx) => {
-    const hasImage = !!images.imageMapping[idx];
-    const imageStatus = hasImage ? '🖼️' : '➖';
+    const hasImageRef = !!card.imageRef;
+    const imageStatus = hasImageRef ? '🔗' : '➖';
     const label =
       card.type === 'cover'
         ? '커버'
@@ -54,11 +38,9 @@ export async function handleFigmaLayout(
     return `${imageStatus} **${label}**: ${card.heading}`;
   });
 
-  // Save stage data
   saveStageData(issueId, Stage.FIGMA_LAYOUT, {
     topic: content.topic,
     cards: content.cards,
-    imageMapping: images.imageMapping,
   });
 
   const embed = new EmbedBuilder()

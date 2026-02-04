@@ -3,26 +3,19 @@
 
 figma.showUI(__html__, { width: 400, height: 600 });
 
-interface CardData {
-  type: 'cover' | 'content' | 'closing';
-  heading: string;
-  body: string;
-  imageRef: string | null;
-}
-
-figma.ui.onmessage = async (msg: { type: string; cards?: CardData[] }) => {
+figma.ui.onmessage = async (msg) => {
   if (msg.type === 'populate-template') {
     if (!msg.cards) return;
     await populateTemplate(msg.cards);
   }
 };
 
-async function populateTemplate(cards: CardData[]) {
+async function populateTemplate(cards) {
   const page = figma.currentPage;
 
   for (let i = 0; i < cards.length; i++) {
     const card = cards[i];
-    let templateName: string;
+    let templateName;
 
     if (card.type === 'cover') templateName = 'Template-Cover';
     else if (card.type === 'closing') templateName = 'Template-Closing';
@@ -31,7 +24,7 @@ async function populateTemplate(cards: CardData[]) {
     // Find template frame
     const template = page.findOne(
       (n) => n.name === templateName && n.type === 'FRAME',
-    ) as FrameNode | null;
+    );
 
     if (!template) {
       figma.notify(`템플릿 "${templateName}"을 찾을 수 없습니다`);
@@ -44,18 +37,18 @@ async function populateTemplate(cards: CardData[]) {
     clone.x = template.x + (i + 1) * (template.width + 40);
 
     // Replace text nodes
-    const textNodes = clone.findAll((n) => n.type === 'TEXT') as TextNode[];
+    const textNodes = clone.findAll((n) => n.type === 'TEXT');
     for (const textNode of textNodes) {
       if (textNode.name === 'title' || textNode.name === 'heading') {
-        await figma.loadFontAsync(textNode.fontName as FontName);
+        await figma.loadFontAsync(textNode.fontName);
         textNode.characters = card.heading || '';
       }
       if (textNode.name === 'subtitle' || textNode.name === 'body') {
-        await figma.loadFontAsync(textNode.fontName as FontName);
+        await figma.loadFontAsync(textNode.fontName);
         textNode.characters = card.body || '';
       }
       if (textNode.name === 'image-ref') {
-        await figma.loadFontAsync(textNode.fontName as FontName);
+        await figma.loadFontAsync(textNode.fontName);
         textNode.characters = card.imageRef || '';
       }
     }

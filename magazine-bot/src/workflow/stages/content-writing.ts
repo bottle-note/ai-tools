@@ -32,7 +32,7 @@ export async function handleContentWriting(
         { name: '본문', value: card.body, inline: false },
       )
       .setColor(card.type === 'cover' ? 0xd4a574 : card.type === 'closing' ? 0x8b6914 : 0xf5e6d0)
-      .setFooter(card.mjKeywords ? { text: `MJ: ${card.mjKeywords}` } : null);
+      .setFooter(card.imageRef ? { text: `🔗 ${card.imageRef}` } : null);
   });
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(

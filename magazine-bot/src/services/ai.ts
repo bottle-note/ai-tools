@@ -32,6 +32,7 @@ export interface Card {
   type: 'cover' | 'content' | 'closing';
   heading: string;
   body: string;
+  imageRef?: string;
 }
 
 const PROMPTS_DIR = join(process.cwd(), 'src', 'prompts');
@@ -81,7 +82,7 @@ export async function generateContent(topic: Topic): Promise<Card[]> {
 
   const parsed = await provider.generateJSON<{ cards: Card[] }>(
     systemPrompt,
-    `"${topic.title}" 주제로 6장의 카드 콘텐츠를 작성해주세요.`,
+    `"${topic.title}" 주제로 카드 콘텐츠를 작성해주세요. 카드 구조 가이드를 참고하여 적절한 장수로 구성하세요.`,
   );
   return parsed.cards;
 }

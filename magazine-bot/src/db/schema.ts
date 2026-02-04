@@ -21,5 +21,24 @@ export function initDatabase(db: Database.Database): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (issue_id) REFERENCES magazine_issues(id)
     );
+
+    CREATE TABLE IF NOT EXISTS published_topics (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      issue_id INTEGER NOT NULL,
+      topic_title TEXT NOT NULL UNIQUE,
+      published_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (issue_id) REFERENCES magazine_issues(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS stage_errors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      issue_id INTEGER NOT NULL,
+      stage TEXT NOT NULL,
+      error_message TEXT NOT NULL,
+      retry_count INTEGER NOT NULL DEFAULT 0,
+      resolved_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (issue_id) REFERENCES magazine_issues(id)
+    );
   `);
 }

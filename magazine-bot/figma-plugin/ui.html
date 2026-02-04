@@ -188,7 +188,7 @@
 
   <div class="config">
     <label>API URL</label>
-    <input type="text" id="apiUrl" value="http://localhost:3000" />
+    <input type="text" id="apiUrl" value="https://bottlenote-magazine-bot.fly.dev" />
   </div>
 
   <div id="view-list">
@@ -280,7 +280,7 @@
       var preview = document.getElementById('cardPreview');
       preview.classList.remove('hidden');
       preview.innerHTML = data.cards.map(function(card) {
-        var hasImg = card.imageUrl ? ' | 🖼️' : '';
+        var hasImg = card.imageRef ? ' | 🔗 이미지 참조' : '';
         return '<div class="card-item">' +
           '<span class="card-type ' + card.type + '">' + card.type + '</span>' +
           card.heading + hasImg +

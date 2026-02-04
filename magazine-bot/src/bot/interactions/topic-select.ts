@@ -1,10 +1,12 @@
-import type { ButtonInteraction, TextChannel } from 'discord.js';
+import type { ButtonInteraction, TextChannel, ThreadChannel } from 'discord.js';
 import { getIssue, getStageData, approveStageData, saveStageData } from '../../db/index.js';
 import { advanceStage } from '../../workflow/engine.js';
 import { Stage } from '../../workflow/machine.js';
 import { handleTopicSelection } from '../../workflow/stages/topic-selection.js';
 import { handleContentWriting } from '../../workflow/stages/content-writing.js';
+import { executeWithRetry } from '../../workflow/recovery.js';
 import type { Topic } from '../../services/ai.js';
+import { client } from '../client.js';
 
 export async function handleTopicButton(interaction: ButtonInteraction): Promise<void> {
   const customId = interaction.customId;
@@ -54,6 +56,18 @@ export async function handleTopicButton(interaction: ButtonInteraction): Promise
   approveStageData(stageData.id);
   saveStageData(issueId, Stage.TOPIC_SELECTION, { topics, selectedTopic, selectedIndex: topicIndex });
 
+  // Update thread name with the selected topic
+  if (issue.thread_id) {
+    try {
+      const thread = await client.channels.fetch(issue.thread_id) as ThreadChannel;
+      if (thread && thread.isThread()) {
+        await thread.setName(`${selectedTopic.title} — 콘텐츠작성`);
+      }
+    } catch (error) {
+      console.error('Failed to update thread name:', error);
+    }
+  }
+
   // Disable buttons on the original message
   await interaction.message.edit({ components: [] });
 
@@ -62,6 +76,23 @@ export async function handleTopicButton(interaction: ButtonInteraction): Promise
   // Advance to CONTENT_WRITING
   await advanceStage(issueId);
 
-  // Trigger content writing
-  await handleContentWriting(issueId, channel, selectedTopic);
+  // Trigger content writing with retry
+  try {
+    await executeWithRetry(
+      issueId,
+      Stage.CONTENT_WRITING,
+      () => handleContentWriting(issueId, channel, selectedTopic),
+      async (attempt, maxRetries, error, nextDelayMs) => {
+        await channel.send(
+          `⚠️ 콘텐츠 생성 중 오류 발생. 재시도 중... (${attempt}/${maxRetries})\n` +
+          `다음 시도까지 ${Math.round(nextDelayMs / 1000)}초`
+        );
+      }
+    );
+  } catch (error) {
+    await channel.send(
+      `❌ 콘텐츠 생성에 실패했습니다: ${(error as Error).message}\n` +
+      `\`/magazine-retry\` 명령어로 재시도하거나 관리자에게 문의하세요.`
+    );
+  }
 }

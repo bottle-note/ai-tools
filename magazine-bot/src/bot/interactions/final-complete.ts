@@ -1,9 +1,8 @@
 import { type ButtonInteraction, type TextChannel } from 'discord.js';
-import { getIssue, getStageData, approveStageData, saveStageData } from '../../db/index.js';
+import { getIssue, getStageData, approveStageData, saveStageData, publishTopic } from '../../db/index.js';
 import { advanceStage } from '../../workflow/engine.js';
 import { Stage } from '../../workflow/machine.js';
 import { generateCaption, type Card, type Topic } from '../../services/ai.js';
-import { addPublishedTopic } from '../../data/topics-manager.js';
 
 interface ContentStageData {
   cards: Card[];
@@ -44,7 +43,7 @@ export async function handleFinalButton(
     if (topicData) {
       const { selectedTopic } = JSON.parse(topicData.data_json) as { selectedTopic: Topic };
       if (selectedTopic?.title) {
-        addPublishedTopic(selectedTopic.title);
+        publishTopic(issueId, selectedTopic.title);
       }
     }
 
