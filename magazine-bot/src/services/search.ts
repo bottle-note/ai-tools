@@ -8,20 +8,8 @@ export interface SearchResult {
   source?: string;
 }
 
-const BRAVE_API_URL = 'https://api.search.brave.com/res/v1/web/search';
-
-// 한국 트렌드/라이프스타일 사이트
-const TREND_SITES = [
-  'theqoo.net',
-  'instagram.com',
-  'twitter.com',
-  'hypebeast.kr',
-  'musinsa.com',
-  'dispatch.co.kr',
-  'news.naver.com',
-  'wikitree.co.kr',
-];
-
+const NAVER_BLOG_API_URL = 'https://openapi.naver.com/v1/search/blog';
+const NAVER_NEWS_API_URL = 'https://openapi.naver.com/v1/search/news';
 
 function getCurrentMonth(): string {
   const months = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
@@ -36,126 +24,135 @@ function getCurrentSeason(): string {
   return '겨울';
 }
 
-async function braveSearch(query: string, count = 10, lang = 'ko'): Promise<SearchResult[]> {
-  if (!config.BRAVE_SEARCH_API_KEY) {
-    console.warn('BRAVE_SEARCH_API_KEY not configured, returning empty results');
+// HTML 태그 제거
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '');
+}
+
+// 네이버 블로그 검색
+async function naverBlogSearch(query: string, count = 10): Promise<SearchResult[]> {
+  if (!config.NAVER_CLIENT_ID || !config.NAVER_CLIENT_SECRET) {
+    console.warn('Naver API not configured');
     return [];
   }
 
   const params = new URLSearchParams({
-    q: query,
-    count: String(count),
-    text_decorations: 'false',
-    search_lang: lang,
-    country: 'kr',
-    freshness: 'pw', // past week for fresher results
+    query,
+    display: String(count),
+    sort: 'date', // 최신순
   });
 
-  const response = await fetch(`${BRAVE_API_URL}?${params}`, {
+  const response = await fetch(`${NAVER_BLOG_API_URL}?${params}`, {
     headers: {
-      'Accept': 'application/json',
-      'X-Subscription-Token': config.BRAVE_SEARCH_API_KEY,
+      'X-Naver-Client-Id': config.NAVER_CLIENT_ID,
+      'X-Naver-Client-Secret': config.NAVER_CLIENT_SECRET,
     },
   });
 
   if (!response.ok) {
-    console.error(`Brave Search API error: ${response.status} ${response.statusText}`);
-    throw new Error(`Brave Search failed: ${response.status}`);
+    console.error(`Naver Blog API error: ${response.status} ${response.statusText}`);
+    throw new Error(`Naver Blog Search failed: ${response.status}`);
   }
 
   const data = await response.json();
-  const results: SearchResult[] = [];
-
-  for (const item of data.web?.results ?? []) {
-    results.push({
-      title: item.title,
-      url: item.url,
-      description: item.description || '',
-      publishedDate: item.age,
-      source: new URL(item.url).hostname,
-    });
-  }
-
-  return results;
+  return (data.items ?? []).map((item: any) => ({
+    title: stripHtml(item.title),
+    url: item.link,
+    description: stripHtml(item.description),
+    publishedDate: item.postdate,
+    source: '블로그',
+  }));
 }
 
-export async function searchWhiskyTrends(): Promise<SearchResult[]> {
-  const season = getCurrentSeason();
-  const month = getCurrentMonth();
-
-  // 일반 트렌드 검색 (위스키와 엮을 수 있는 핫이슈)
-  const queries = [
-    // 한국 핫이슈/트렌드
-    '요즘 핫한 트렌드 MZ세대',
-    '최신 바이럴 화제',
-    `${month} 트렌드 이슈`,
-    // 음식/음료 트렌드
-    '요즘 핫한 디저트 음료',
-    '힙한 술집 바 트렌드',
-    // 시즌 트렌드
-    `${season} 분위기 데이트`,
-    // 라이프스타일
-    '요즘 핫한 취미 MZ',
-  ];
-
-  const allResults: SearchResult[] = [];
-
-  // 각 쿼리에서 2-3개씩 가져오기
-  for (const query of queries) {
-    try {
-      const results = await braveSearch(query, 3);
-      allResults.push(...results);
-    } catch (error) {
-      console.error(`Search failed for query: ${query}`, error);
-    }
+// 네이버 뉴스 검색
+async function naverNewsSearch(query: string, count = 10): Promise<SearchResult[]> {
+  if (!config.NAVER_CLIENT_ID || !config.NAVER_CLIENT_SECRET) {
+    console.warn('Naver API not configured');
+    return [];
   }
 
-  // Deduplicate by URL
-  const seen = new Set<string>();
-  const unique = allResults.filter(r => {
-    if (seen.has(r.url)) return false;
-    seen.add(r.url);
-    return true;
+  const params = new URLSearchParams({
+    query,
+    display: String(count),
+    sort: 'date',
   });
 
-  // 트렌드 사이트 우선
-  return unique.sort((a, b) => {
-    const aIsTrendSite = TREND_SITES.some(site => a.url.includes(site));
-    const bIsTrendSite = TREND_SITES.some(site => b.url.includes(site));
-    if (aIsTrendSite && !bIsTrendSite) return -1;
-    if (!aIsTrendSite && bIsTrendSite) return 1;
-    return 0;
-  }).slice(0, 5);
+  const response = await fetch(`${NAVER_NEWS_API_URL}?${params}`, {
+    headers: {
+      'X-Naver-Client-Id': config.NAVER_CLIENT_ID,
+      'X-Naver-Client-Secret': config.NAVER_CLIENT_SECRET,
+    },
+  });
+
+  if (!response.ok) {
+    console.error(`Naver News API error: ${response.status} ${response.statusText}`);
+    throw new Error(`Naver News Search failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return (data.items ?? []).map((item: any) => ({
+    title: stripHtml(item.title),
+    url: item.link,
+    description: stripHtml(item.description),
+    publishedDate: item.pubDate,
+    source: '뉴스',
+  }));
 }
 
-export async function searchByKeyword(keyword: string): Promise<SearchResult[]> {
-  const queries = [
-    // 키워드 관련 트렌드 검색
-    `${keyword} 트렌드 화제`,
-    `${keyword} 인기 핫한`,
-    // 키워드 + 위스키/술 연관
-    `${keyword} 술 페어링`,
-    `${keyword} 위스키`,
-  ];
+// 기존 주제와 겹치는 결과 필터링
+function filterExcludedTopics(results: SearchResult[], excludeTopics: string[]): SearchResult[] {
+  if (!excludeTopics.length) return results;
 
-  const allResults: SearchResult[] = [];
+  const excludeKeywords = excludeTopics
+    .flatMap(topic => topic.split(/[\s,:\-—]+/))
+    .filter(word => word.length >= 2)
+    .map(word => word.toLowerCase());
 
-  for (const query of queries) {
-    try {
-      const results = await braveSearch(query, 4);
-      allResults.push(...results);
-    } catch (error) {
-      console.error(`Search failed for keyword: ${keyword}`, error);
-    }
+  return results.filter(result => {
+    const titleLower = result.title.toLowerCase();
+    const descLower = result.description.toLowerCase();
+    return !excludeKeywords.some(keyword =>
+      titleLower.includes(keyword) || descLower.includes(keyword)
+    );
+  });
+}
+
+export async function searchWhiskyTrends(excludeTopics: string[] = []): Promise<SearchResult[]> {
+  const year = new Date().getFullYear();
+
+  // 순수 MZ 트렌드 검색 (위스키 키워드 없이)
+  // AI가 나중에 선택된 트렌드와 위스키를 창의적으로 연결
+  const query = `${year} MZ세대 트렌드 요즘 핫한 유행`;
+
+  let results: SearchResult[] = [];
+  try {
+    // 블로그만 검색 (트렌드 키워드는 블로그가 더 풍부)
+    results = await naverBlogSearch(query, 20);
+  } catch (error) {
+    console.error('Trend search failed:', error);
+    return [];
   }
 
-  // Deduplicate by URL
-  const seen = new Set<string>();
-  const unique = allResults.filter(r => {
-    if (seen.has(r.url)) return false;
-    seen.add(r.url);
-    return true;
-  });
+  const filtered = filterExcludedTopics(results, excludeTopics);
+  return filtered.slice(0, 10);
+}
 
-  return unique.slice(0, 5);
+export async function searchByKeyword(keyword: string, excludeTopics: string[] = []): Promise<SearchResult[]> {
+  const query = `${keyword} 위스키`;
+
+  let results: SearchResult[] = [];
+  try {
+    const [blogResults, newsResults] = await Promise.all([
+      naverBlogSearch(query, 10),
+      naverNewsSearch(query, 10),
+    ]);
+
+    results = [...newsResults, ...blogResults];
+  } catch (error) {
+    console.error(`Keyword search failed for: ${keyword}`, error);
+    return [];
+  }
+
+  const filtered = filterExcludedTopics(results, excludeTopics);
+  return filtered.slice(0, 10);
 }
