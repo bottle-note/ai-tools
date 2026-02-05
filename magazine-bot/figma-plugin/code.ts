@@ -4,7 +4,7 @@
 figma.showUI(__html__, { width: 400, height: 600 });
 
 interface CardData {
-  type: 'cover' | 'content' | 'closing';
+  type: 'cover' | 'description' | 'whisky' | 'closing';
   heading: string;
   body: string;
   tags: string[];
@@ -34,6 +34,7 @@ async function populateTemplate(cards: CardData[]) {
 
     if (card.type === 'cover') templateName = 'Template-Cover';
     else if (card.type === 'closing') templateName = 'Template-Closing';
+    else if (card.type === 'whisky') templateName = 'Template-Whisky';
     else templateName = 'Template-Content';
 
     // Find template frame

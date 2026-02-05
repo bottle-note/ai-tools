@@ -23,6 +23,8 @@ async function populateTemplate(cards) {
             templateName = 'Template-Cover';
         else if (card.type === 'closing')
             templateName = 'Template-Closing';
+        else if (card.type === 'whisky')
+            templateName = 'Template-Whisky';
         else
             templateName = 'Template-Content';
         // Find template frame

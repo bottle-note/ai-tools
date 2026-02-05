@@ -22,11 +22,11 @@ function createProvider(): AIProvider {
 const provider = createProvider();
 
 export interface Card {
-  type: 'cover' | 'content' | 'closing';
+  type: 'cover' | 'description' | 'whisky' | 'closing';
   heading: string;
   body: string;
-  tags?: string[];      // 특성 태그 (예: ["입문용", "과일향", "부드러운"])
-  imageRef?: string;
+  tags?: string[];      // 특성 태그 (예: ["입문용", "과일향", "부드러운"]) - whisky 타입에서 사용
+  imageRef?: string;    // 브랜드 URL - whisky 타입에서 사용
 }
 
 export interface Topic {
