@@ -70,6 +70,26 @@ export function getActiveIssue(channelId: string): Issue | null {
   return (stmt.get(channelId) as Issue) ?? null;
 }
 
+export interface ActiveIssueWithTopic extends Issue {
+  topic_title: string | null;
+}
+
+export function getAllActiveIssues(): ActiveIssueWithTopic[] {
+  const stmt = db.prepare(`
+    SELECT
+      mi.*,
+      COALESCE(
+        json_extract(sd.data_json, '$.selectedTopic.title'),
+        json_extract(sd.data_json, '$.topics[0].title')
+      ) as topic_title
+    FROM magazine_issues mi
+    LEFT JOIN stage_data sd ON sd.issue_id = mi.id AND sd.stage = 'TOPIC_SELECTION'
+    WHERE mi.stage != 'COMPLETE'
+    ORDER BY mi.id DESC
+  `);
+  return stmt.all() as ActiveIssueWithTopic[];
+}
+
 export function updateIssueStage(id: number, stage: string): void {
   const stmt = db.prepare(
     "UPDATE magazine_issues SET stage = ?, updated_at = datetime('now') WHERE id = ?"

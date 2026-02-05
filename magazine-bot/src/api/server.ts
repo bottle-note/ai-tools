@@ -20,10 +20,22 @@ export function createApiServer(
   app.use(express.json());
 
   app.get('/api/issues', (_req, res) => {
-    const stmt = db.prepare(
-      "SELECT * FROM magazine_issues WHERE stage = ? ORDER BY created_at DESC",
-    );
-    const issues = stmt.all(Stage.FIGMA_LAYOUT) as Issue[];
+    // Show issues that have content ready (FIGMA_LAYOUT, FINAL_OUTPUT, or COMPLETE with content)
+    const stmt = db.prepare(`
+      SELECT mi.* FROM magazine_issues mi
+      WHERE mi.stage IN (?, ?, ?)
+        AND EXISTS (
+          SELECT 1 FROM stage_data sd
+          WHERE sd.issue_id = mi.id AND sd.stage = ? AND sd.status = 'approved'
+        )
+      ORDER BY mi.created_at DESC
+    `);
+    const issues = stmt.all(
+      Stage.FIGMA_LAYOUT,
+      Stage.FINAL_OUTPUT,
+      Stage.COMPLETE,
+      Stage.CONTENT_WRITING,
+    ) as Issue[];
 
     res.json(
       issues.map((i) => ({
@@ -56,6 +68,7 @@ export function createApiServer(
       type: card.type,
       heading: card.heading,
       body: card.body,
+      tags: card.tags ?? [],
       imageRef: card.imageRef ?? null,
     }));
 

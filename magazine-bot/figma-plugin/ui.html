@@ -171,7 +171,8 @@
   }
 
   .card-type.cover { background: #a259ff33; color: #a259ff; }
-  .card-type.content { background: #59a2ff33; color: #59a2ff; }
+  .card-type.description { background: #59a2ff33; color: #59a2ff; }
+  .card-type.whisky { background: #f5a62333; color: #f5a623; }
   .card-type.closing { background: #ff925933; color: #ff9259; }
 
   .hidden { display: none; }
@@ -309,10 +310,13 @@
       var preview = document.getElementById('cardPreview');
       preview.classList.remove('hidden');
       preview.innerHTML = data.cards.map(function(card) {
-        var hasImg = card.imageRef ? ' | 🔗 이미지 참조' : '';
+        var hasImg = card.imageRef ? ' 🔗' : '';
+        var tagsBadge = card.tags && card.tags.length > 0
+          ? ' <span style="color:#888;font-size:10px;">[' + card.tags.join(', ') + ']</span>'
+          : '';
         return '<div class="card-item">' +
           '<span class="card-type ' + card.type + '">' + card.type + '</span>' +
-          card.heading + hasImg +
+          card.heading + hasImg + tagsBadge +
         '</div>';
       }).join('');
 

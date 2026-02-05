@@ -4,10 +4,11 @@
 figma.showUI(__html__, { width: 400, height: 600 });
 
 interface CardData {
-  type: 'cover' | 'content' | 'closing';
+  type: 'cover' | 'description' | 'whisky' | 'closing';
   heading: string;
   body: string;
-  imageRef: string | null;
+  tags?: string[];
+  imageRef?: string | null;
 }
 
 figma.ui.onmessage = async (msg: { type: string; cards?: CardData[] }) => {
@@ -33,6 +34,7 @@ async function populateTemplate(cards: CardData[]) {
 
     if (card.type === 'cover') templateName = 'Template-Cover';
     else if (card.type === 'closing') templateName = 'Template-Closing';
+    else if (card.type === 'whisky') templateName = 'Template-Whisky';
     else templateName = 'Template-Content';
 
     // Find template frame
@@ -73,6 +75,21 @@ async function populateTemplate(cards: CardData[]) {
       if (textNode.name === 'image-ref') {
         await figma.loadFontAsync(textNode.fontName as FontName);
         textNode.characters = card.imageRef || '';
+      }
+      // Handle tag-1, tag-2, tag-3
+      if (textNode.name.startsWith('tag-')) {
+        const tagIndex = parseInt(textNode.name.replace('tag-', ''), 10) - 1;
+        await figma.loadFontAsync(textNode.fontName as FontName);
+        textNode.characters = card.tags?.[tagIndex] || '';
+      }
+    }
+
+    // Handle tags container visibility
+    const tagsContainer = clone.findOne((n) => n.name === 'tags') as FrameNode | null;
+    if (tagsContainer) {
+      // Hide container if no tags
+      if (!card.tags || card.tags.length === 0) {
+        tagsContainer.visible = false;
       }
     }
 

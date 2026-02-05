@@ -1,5 +1,12 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, type TextChannel, type ThreadChannel } from 'discord.js';
-import { getActiveIssue, getIssue, updateIssueStage, markErrorResolved, getUnresolvedErrors } from '../../db/index.js';
+import {
+  SlashCommandBuilder,
+  ChatInputCommandInteraction,
+  type ThreadChannel,
+  EmbedBuilder,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+} from 'discord.js';
+import { getAllActiveIssues, getIssue, updateIssueStage, markErrorResolved, getUnresolvedErrors } from '../../db/index.js';
 import { Stage } from '../../workflow/machine.js';
 import { client } from '../client.js';
 
@@ -21,24 +28,89 @@ export const data = new SlashCommandBuilder()
   .addIntegerOption(option =>
     option
       .setName('issue_id')
-      .setDescription('이슈 ID (선택사항, 미지정 시 현재 채널의 활성 이슈)')
+      .setDescription('이슈 ID (선택사항, 미지정 시 목록에서 선택)')
       .setRequired(false)
   );
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
-  const channelId = interaction.channelId;
   const specifiedIssueId = interaction.options.getInteger('issue_id');
   const targetStage = interaction.options.getString('stage', true) as Stage;
 
-  const issue = specifiedIssueId
-    ? getIssue(specifiedIssueId)
-    : getActiveIssue(channelId);
+  // If issue ID is specified, reset directly
+  if (specifiedIssueId) {
+    const issue = getIssue(specifiedIssueId);
+    if (!issue) {
+      await interaction.reply({
+        content: `이슈 #${specifiedIssueId}을(를) 찾을 수 없습니다.`,
+        ephemeral: true,
+      });
+      return;
+    }
+    await resetIssue(interaction, issue.id, targetStage);
+    return;
+  }
 
+  // Show all active issues
+  const activeIssues = getAllActiveIssues();
+
+  if (activeIssues.length === 0) {
+    await interaction.reply({
+      content: '진행 중인 이슈가 없습니다.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  // If only one active issue, reset it directly
+  if (activeIssues.length === 1) {
+    await resetIssue(interaction, activeIssues[0].id, targetStage);
+    return;
+  }
+
+  // Multiple active issues - show selection menu
+  const embed = new EmbedBuilder()
+    .setTitle('🔄 이슈 리셋')
+    .setDescription(`**${getStageKoreanName(targetStage)}** 단계로 리셋할 이슈를 선택해주세요.`)
+    .setColor(0xffa500);
+
+  activeIssues.forEach((issue) => {
+    const topicInfo = issue.topic_title || '(주제 미선정)';
+    embed.addFields({
+      name: `#${issue.id} - ${topicInfo}`,
+      value: `현재 단계: ${getStageKoreanName(issue.stage as Stage)} | 생성: ${issue.created_at}`,
+      inline: false,
+    });
+  });
+
+  const options = activeIssues.map((issue) => ({
+    label: `#${issue.id} - ${issue.topic_title || '주제 미선정'}`,
+    description: `현재: ${getStageKoreanName(issue.stage as Stage)}`,
+    value: `${issue.id}_${targetStage}`,
+  }));
+
+  const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('reset_issue_select')
+      .setPlaceholder('리셋할 이슈 선택')
+      .addOptions(options.slice(0, 25)),
+  );
+
+  await interaction.reply({
+    embeds: [embed],
+    components: [row],
+    ephemeral: true,
+  });
+}
+
+async function resetIssue(
+  interaction: ChatInputCommandInteraction,
+  issueId: number,
+  targetStage: Stage,
+): Promise<void> {
+  const issue = getIssue(issueId);
   if (!issue) {
     await interaction.reply({
-      content: specifiedIssueId
-        ? `이슈 #${specifiedIssueId}을(를) 찾을 수 없습니다.`
-        : '현재 채널에 활성 이슈가 없습니다.',
+      content: `이슈 #${issueId}을(를) 찾을 수 없습니다.`,
       ephemeral: true,
     });
     return;
@@ -61,7 +133,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     markErrorResolved(error.id);
   }
 
-  await interaction.reply(`✅ 이슈 #${issue.id}이(가) **${getStageKoreanName(targetStage)}** 단계로 리셋되었습니다.\n\`/magazine-retry\` 명령어로 해당 단계를 실행할 수 있습니다.`);
+  await interaction.reply(
+    `✅ 이슈 #${issue.id}이(가) **${getStageKoreanName(targetStage)}** 단계로 리셋되었습니다.\n` +
+    `\`/magazine-retry\` 명령어로 해당 단계를 실행할 수 있습니다.`
+  );
 
   // Update thread name if available
   if (issue.thread_id) {

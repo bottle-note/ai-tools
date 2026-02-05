@@ -10,6 +10,23 @@ import { client } from '../client.js';
 
 export async function handleTopicButton(interaction: ButtonInteraction): Promise<void> {
   const customId = interaction.customId;
+
+  // Handle search-based topic confirmation
+  if (customId.startsWith('topic_confirm_')) {
+    const issueId = parseInt(customId.split('_')[2], 10);
+    await handleTopicConfirm(interaction, issueId);
+    return;
+  }
+
+  // Handle search-based topic regeneration
+  if (customId.startsWith('topic_regenerate_search_')) {
+    const parts = customId.split('_');
+    const issueId = parseInt(parts[3], 10);
+    const searchResultIndex = parseInt(parts[4], 10);
+    await handleSearchTopicRegenerate(interaction, issueId, searchResultIndex);
+    return;
+  }
+
   const issueId = parseInt(customId.split('_').pop()!, 10);
 
   const issue = getIssue(issueId);
@@ -25,7 +42,7 @@ export async function handleTopicButton(interaction: ButtonInteraction): Promise
 
   const channel = interaction.channel as TextChannel;
 
-  // Regenerate
+  // Regenerate (classic mode)
   if (customId.startsWith('topic_regenerate_')) {
     await interaction.deferUpdate();
     await interaction.message.delete().catch(() => {});
@@ -95,4 +112,83 @@ export async function handleTopicButton(interaction: ButtonInteraction): Promise
       `\`/magazine-retry\` 명령어로 재시도하거나 관리자에게 문의하세요.`
     );
   }
+}
+
+async function handleTopicConfirm(interaction: ButtonInteraction, issueId: number): Promise<void> {
+  const issue = getIssue(issueId);
+  if (!issue) {
+    await interaction.reply({ content: '이슈를 찾을 수 없습니다.', ephemeral: true });
+    return;
+  }
+
+  const stageData = getStageData(issueId, Stage.TOPIC_SELECTION);
+  if (!stageData) {
+    await interaction.reply({ content: '주제 데이터를 찾을 수 없습니다.', ephemeral: true });
+    return;
+  }
+
+  const data = JSON.parse(stageData.data_json) as { topics: Topic[] };
+  const selectedTopic = data.topics[0]; // Search-based mode always has 1 topic
+
+  if (!selectedTopic) {
+    await interaction.reply({ content: '주제를 찾을 수 없습니다.', ephemeral: true });
+    return;
+  }
+
+  await interaction.deferUpdate();
+
+  const channel = interaction.channel as TextChannel;
+
+  // Approve and save
+  approveStageData(stageData.id);
+  saveStageData(issueId, Stage.TOPIC_SELECTION, { ...data, selectedTopic, selectedIndex: 0 });
+
+  // Update thread name
+  if (issue.thread_id) {
+    try {
+      const thread = await client.channels.fetch(issue.thread_id) as ThreadChannel;
+      if (thread && thread.isThread()) {
+        await thread.setName(`${selectedTopic.title} — 콘텐츠작성`);
+      }
+    } catch (error) {
+      console.error('Failed to update thread name:', error);
+    }
+  }
+
+  await interaction.message.edit({ components: [] });
+  await channel.send(`✅ 주제 **"${selectedTopic.title}"** 이(가) 확정되었습니다.`);
+
+  // Advance to CONTENT_WRITING
+  await advanceStage(issueId);
+
+  try {
+    await executeWithRetry(
+      issueId,
+      Stage.CONTENT_WRITING,
+      () => handleContentWriting(issueId, channel, selectedTopic),
+      async (attempt, maxRetries, _error, nextDelayMs) => {
+        await channel.send(
+          `⚠️ 콘텐츠 생성 중 오류 발생. 재시도 중... (${attempt}/${maxRetries})\n` +
+          `다음 시도까지 ${Math.round(nextDelayMs / 1000)}초`
+        );
+      }
+    );
+  } catch (error) {
+    await channel.send(
+      `❌ 콘텐츠 생성에 실패했습니다: ${(error as Error).message}\n` +
+      `\`/magazine-retry\` 명령어로 재시도하거나 관리자에게 문의하세요.`
+    );
+  }
+}
+
+async function handleSearchTopicRegenerate(
+  interaction: ButtonInteraction,
+  issueId: number,
+  searchResultIndex: number,
+): Promise<void> {
+  await interaction.deferUpdate();
+  await interaction.message.delete().catch(() => {});
+
+  const channel = interaction.channel as TextChannel;
+  await handleTopicSelection(issueId, channel, interaction.user.id, searchResultIndex);
 }
