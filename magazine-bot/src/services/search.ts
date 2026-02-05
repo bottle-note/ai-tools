@@ -22,13 +22,6 @@ const TREND_SITES = [
   'wikitree.co.kr',
 ];
 
-// 위스키 전문 사이트
-const WHISKY_SITES = [
-  'whiskyadvocate.com',
-  'thewhiskeywash.com',
-  'scotchwhisky.com',
-  'whiskymagazine.com',
-];
 
 function getCurrentMonth(): string {
   const months = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
@@ -66,8 +59,7 @@ async function braveSearch(query: string, count = 10, lang = 'ko'): Promise<Sear
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    console.error('Brave Search API error:', error);
+    console.error(`Brave Search API error: ${response.status} ${response.statusText}`);
     throw new Error(`Brave Search failed: ${response.status}`);
   }
 

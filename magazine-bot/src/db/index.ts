@@ -78,7 +78,10 @@ export function getAllActiveIssues(): ActiveIssueWithTopic[] {
   const stmt = db.prepare(`
     SELECT
       mi.*,
-      json_extract(sd.data_json, '$.selectedTopic.title') as topic_title
+      COALESCE(
+        json_extract(sd.data_json, '$.selectedTopic.title'),
+        json_extract(sd.data_json, '$.topics[0].title')
+      ) as topic_title
     FROM magazine_issues mi
     LEFT JOIN stage_data sd ON sd.issue_id = mi.id AND sd.stage = 'TOPIC_SELECTION'
     WHERE mi.stage != 'COMPLETE'

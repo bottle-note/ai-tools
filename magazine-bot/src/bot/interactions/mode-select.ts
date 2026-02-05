@@ -67,9 +67,12 @@ async function showSearchResults(
 
   results.forEach((result, index) => {
     const sourceInfo = result.publishedDate ? ` (${result.publishedDate})` : '';
+    const desc = result.description.length > 150
+      ? `${result.description.slice(0, 150)}...`
+      : result.description;
     embed.addFields({
       name: `${index + 1}. ${result.title}`,
-      value: `${result.description.slice(0, 150)}...\n🔗 ${result.source}${sourceInfo}`,
+      value: `${desc}\n🔗 ${result.source}${sourceInfo}`,
       inline: false,
     });
   });
@@ -81,10 +84,10 @@ async function showSearchResults(
       .setStyle(ButtonStyle.Primary)
   );
 
-  // Add regenerate button
+  // Add regenerate button - preserve original mode
   buttons.push(
     new ButtonBuilder()
-      .setCustomId(`mode_trend_${issueId}_${userId}`)
+      .setCustomId(`mode_${mode}_${issueId}_${userId}`)
       .setLabel('🔄 다시 검색')
       .setStyle(ButtonStyle.Secondary)
   );
@@ -201,9 +204,12 @@ export async function handleKeywordModal(interaction: ModalSubmitInteraction): P
 
     results.forEach((result, index) => {
       const sourceInfo = result.publishedDate ? ` (${result.publishedDate})` : '';
+      const desc = result.description.length > 150
+        ? `${result.description.slice(0, 150)}...`
+        : result.description;
       embed.addFields({
         name: `${index + 1}. ${result.title}`,
-        value: `${result.description.slice(0, 150)}...\n🔗 ${result.source}${sourceInfo}`,
+        value: `${desc}\n🔗 ${result.source}${sourceInfo}`,
         inline: false,
       });
     });

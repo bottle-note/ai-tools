@@ -7,8 +7,8 @@ interface CardData {
   type: 'cover' | 'description' | 'whisky' | 'closing';
   heading: string;
   body: string;
-  tags: string[];
-  imageRef: string | null;
+  tags?: string[];
+  imageRef?: string | null;
 }
 
 figma.ui.onmessage = async (msg: { type: string; cards?: CardData[] }) => {
