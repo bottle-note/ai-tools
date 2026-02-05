@@ -10,6 +10,7 @@ const envSchema = z.object({
   MAGAZINE_CHANNEL_ID: z.string().min(1),
   FIGMA_FILE_KEY: z.string().optional(),
   API_PORT: z.coerce.number().default(3000),
+  BRAVE_SEARCH_API_KEY: z.string().optional(),
 });
 
 export type Config = z.infer<typeof envSchema>;

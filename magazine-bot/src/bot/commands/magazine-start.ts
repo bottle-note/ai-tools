@@ -1,6 +1,13 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, type TextChannel } from 'discord.js';
+import {
+  SlashCommandBuilder,
+  ChatInputCommandInteraction,
+  type TextChannel,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} from 'discord.js';
 import { getActiveIssue, updateIssueStage, createIssue, updateIssueThread, updateIssueThreadUrl } from '../../db/index.js';
-import { handleTopicSelection } from '../../workflow/stages/topic-selection.js';
 
 function cancelIssue(id: number): void {
   updateIssueStage(id, 'COMPLETE');
@@ -36,6 +43,35 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const threadUrl = `https://discord.com/channels/${interaction.guildId}/${thread.id}`;
   updateIssueThreadUrl(issue.id, threadUrl);
 
-  // Start topic selection in the thread (pass user ID for notification)
-  await handleTopicSelection(issue.id, thread, interaction.user.id);
+  // Show mode selection buttons
+  const embed = new EmbedBuilder()
+    .setTitle('📰 매거진 주제 선정 모드')
+    .setDescription('주제를 어떻게 찾을지 선택해주세요.')
+    .addFields(
+      { name: '🔥 트렌드 기반', value: '최신 위스키 뉴스와 트렌드를 검색합니다', inline: false },
+      { name: '🔍 키워드 입력', value: '원하는 키워드로 관련 정보를 검색합니다', inline: false },
+      { name: '📝 기존 방식', value: 'AI가 자유롭게 주제를 생성합니다', inline: false },
+    )
+    .setColor(0xd4a574);
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`mode_trend_${issue.id}_${interaction.user.id}`)
+      .setLabel('🔥 트렌드')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`mode_keyword_${issue.id}_${interaction.user.id}`)
+      .setLabel('🔍 키워드')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`mode_classic_${issue.id}_${interaction.user.id}`)
+      .setLabel('📝 기존')
+      .setStyle(ButtonStyle.Secondary),
+  );
+
+  await thread.send({
+    content: `<@${interaction.user.id}>`,
+    embeds: [embed],
+    components: [row],
+  });
 }

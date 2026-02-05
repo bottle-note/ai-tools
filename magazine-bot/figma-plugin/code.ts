@@ -7,6 +7,7 @@ interface CardData {
   type: 'cover' | 'content' | 'closing';
   heading: string;
   body: string;
+  tags: string[];
   imageRef: string | null;
 }
 
@@ -73,6 +74,21 @@ async function populateTemplate(cards: CardData[]) {
       if (textNode.name === 'image-ref') {
         await figma.loadFontAsync(textNode.fontName as FontName);
         textNode.characters = card.imageRef || '';
+      }
+      // Handle tag-1, tag-2, tag-3
+      if (textNode.name.startsWith('tag-')) {
+        const tagIndex = parseInt(textNode.name.replace('tag-', ''), 10) - 1;
+        await figma.loadFontAsync(textNode.fontName as FontName);
+        textNode.characters = card.tags?.[tagIndex] || '';
+      }
+    }
+
+    // Handle tags container visibility
+    const tagsContainer = clone.findOne((n) => n.name === 'tags') as FrameNode | null;
+    if (tagsContainer) {
+      // Hide container if no tags
+      if (!card.tags || card.tags.length === 0) {
+        tagsContainer.visible = false;
       }
     }
 
