@@ -99,6 +99,34 @@ async function naverNewsSearch(query: string, count = 10): Promise<SearchResult[
   }));
 }
 
+// Fisher-Yates 셔플
+function shuffle<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// 비슷한 제목 중복 제거 (핵심 키워드 기준)
+function deduplicateSimilar(results: SearchResult[]): SearchResult[] {
+  const seen = new Set<string>();
+  return results.filter(result => {
+    // 제목에서 핵심 키워드 추출 (4글자 이상 명사)
+    const keywords = result.title
+      .replace(/[^\uAC00-\uD7AF\w]/g, ' ') // 한글, 영문, 숫자만
+      .split(/\s+/)
+      .filter(w => w.length >= 4)
+      .slice(0, 3); // 상위 3개 키워드
+
+    const key = keywords.sort().join('|');
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 // 기존 주제와 겹치는 결과 필터링
 // 너무 공격적으로 필터링하지 않도록 5글자 이상 고유명사/브랜드명만 필터링
 function filterExcludedTopics(results: SearchResult[], excludeTopics: string[]): SearchResult[] {
@@ -141,8 +169,13 @@ export async function searchWhiskyTrends(excludeTopics: string[] = []): Promise<
     return [];
   }
 
+  // 1. 기존 주제 필터링
   const filtered = filterExcludedTopics(results, excludeTopics);
-  return filtered.slice(0, 9); // Discord 버튼 제한 (5+4)
+  // 2. 비슷한 제목 중복 제거
+  const deduplicated = deduplicateSimilar(filtered);
+  // 3. 랜덤 셔플 (매번 다른 결과)
+  const shuffled = shuffle(deduplicated);
+  return shuffled.slice(0, 9); // Discord 버튼 제한 (5+4)
 }
 
 export async function searchByKeyword(keyword: string, excludeTopics: string[] = []): Promise<SearchResult[]> {
@@ -162,5 +195,7 @@ export async function searchByKeyword(keyword: string, excludeTopics: string[] =
   }
 
   const filtered = filterExcludedTopics(results, excludeTopics);
-  return filtered.slice(0, 9); // Discord 버튼 제한 (5+4)
+  const deduplicated = deduplicateSimilar(filtered);
+  const shuffled = shuffle(deduplicated);
+  return shuffled.slice(0, 9); // Discord 버튼 제한 (5+4)
 }
