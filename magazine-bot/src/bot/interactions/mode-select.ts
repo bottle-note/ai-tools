@@ -77,28 +77,32 @@ async function showSearchResults(
     });
   });
 
-  const buttons = results.map((_, index) =>
+  // Discord 버튼 제한: 한 행에 최대 5개
+  // 결과 버튼 + 다시 검색 버튼을 고려해서 행 분배
+  const resultButtons = results.map((_, index) =>
     new ButtonBuilder()
       .setCustomId(`search_result_${issueId}_${index}_${userId}`)
       .setLabel(`${index + 1}`)
       .setStyle(ButtonStyle.Primary)
   );
 
-  // Add regenerate button - preserve original mode
-  buttons.push(
-    new ButtonBuilder()
-      .setCustomId(`mode_${mode}_${issueId}_${userId}`)
-      .setLabel('🔄 다시 검색')
-      .setStyle(ButtonStyle.Secondary)
-  );
+  const regenerateButton = new ButtonBuilder()
+    .setCustomId(`mode_${mode}_${issueId}_${userId}`)
+    .setLabel('🔄 다시 검색')
+    .setStyle(ButtonStyle.Secondary);
 
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons.slice(0, 5));
-  const components = [row];
+  const components: ActionRowBuilder<ButtonBuilder>[] = [];
 
-  if (buttons.length > 5) {
-    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons.slice(5));
-    components.push(row2);
+  // 첫 번째 행: 결과 1-5
+  const row1Buttons = resultButtons.slice(0, 5);
+  if (row1Buttons.length > 0) {
+    components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(row1Buttons));
   }
+
+  // 두 번째 행: 결과 6-10 (있으면) + 다시 검색
+  const row2Buttons = resultButtons.slice(5, 9); // 최대 4개 (다시 검색 버튼 공간 확보)
+  row2Buttons.push(regenerateButton);
+  components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(row2Buttons));
 
   await interaction.editReply({
     content: `<@${userId}>`,

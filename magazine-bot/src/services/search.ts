@@ -142,7 +142,7 @@ export async function searchWhiskyTrends(excludeTopics: string[] = []): Promise<
   }
 
   const filtered = filterExcludedTopics(results, excludeTopics);
-  return filtered.slice(0, 10);
+  return filtered.slice(0, 9); // Discord 버튼 제한 (5+4)
 }
 
 export async function searchByKeyword(keyword: string, excludeTopics: string[] = []): Promise<SearchResult[]> {
@@ -162,5 +162,5 @@ export async function searchByKeyword(keyword: string, excludeTopics: string[] =
   }
 
   const filtered = filterExcludedTopics(results, excludeTopics);
-  return filtered.slice(0, 10);
+  return filtered.slice(0, 9); // Discord 버튼 제한 (5+4)
 }
