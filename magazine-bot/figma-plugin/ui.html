@@ -309,10 +309,13 @@
       var preview = document.getElementById('cardPreview');
       preview.classList.remove('hidden');
       preview.innerHTML = data.cards.map(function(card) {
-        var hasImg = card.imageRef ? ' | 🔗 이미지 참조' : '';
+        var hasImg = card.imageRef ? ' 🔗' : '';
+        var tagsBadge = card.tags && card.tags.length > 0
+          ? ' <span style="color:#888;font-size:10px;">[' + card.tags.join(', ') + ']</span>'
+          : '';
         return '<div class="card-item">' +
           '<span class="card-type ' + card.type + '">' + card.type + '</span>' +
-          card.heading + hasImg +
+          card.heading + hasImg + tagsBadge +
         '</div>';
       }).join('');
 
