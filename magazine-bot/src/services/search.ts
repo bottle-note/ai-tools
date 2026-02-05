@@ -100,20 +100,28 @@ async function naverNewsSearch(query: string, count = 10): Promise<SearchResult[
 }
 
 // 기존 주제와 겹치는 결과 필터링
+// 너무 공격적으로 필터링하지 않도록 5글자 이상 고유명사/브랜드명만 필터링
 function filterExcludedTopics(results: SearchResult[], excludeTopics: string[]): SearchResult[] {
   if (!excludeTopics.length) return results;
 
+  // 흔한 단어는 제외 (트렌드, 위스키, 추천 등)
+  const commonWords = new Set([
+    '위스키', 'whisky', 'whiskey', '트렌드', '추천', '인기', '디저트',
+    '카페', '맛집', '리뷰', '후기', '소개', '정보', '이야기', '세대',
+    '요즘', '최근', '올해', '2024', '2025', '2026',
+  ]);
+
   const excludeKeywords = excludeTopics
     .flatMap(topic => topic.split(/[\s,:\-—]+/))
-    .filter(word => word.length >= 2)
-    .map(word => word.toLowerCase());
+    .filter(word => word.length >= 5) // 5글자 이상만 (더 구체적인 키워드)
+    .map(word => word.toLowerCase())
+    .filter(word => !commonWords.has(word)); // 흔한 단어 제외
+
+  if (!excludeKeywords.length) return results;
 
   return results.filter(result => {
     const titleLower = result.title.toLowerCase();
-    const descLower = result.description.toLowerCase();
-    return !excludeKeywords.some(keyword =>
-      titleLower.includes(keyword) || descLower.includes(keyword)
-    );
+    return !excludeKeywords.some(keyword => titleLower.includes(keyword));
   });
 }
 
