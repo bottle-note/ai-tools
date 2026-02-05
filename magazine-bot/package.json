@@ -8,7 +8,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsup",
     "start": "node dist/index.js",
-    "deploy-commands": "tsx src/deploy-commands.ts"
+    "deploy-commands": "tsx src/deploy-commands.ts",
+    "prompt": "tsx scripts/test-prompt.ts",
+    "search": "tsx scripts/test-search.ts"
   },
   "dependencies": {
     "better-sqlite3": "^11.6.0",

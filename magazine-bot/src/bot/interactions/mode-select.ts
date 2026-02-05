@@ -11,7 +11,7 @@ import {
   type TextChannel,
 } from 'discord.js';
 import { searchWhiskyTrends, searchByKeyword, type SearchResult } from '../../services/search.js';
-import { saveStageData, getStageData } from '../../db/index.js';
+import { saveStageData, getStageData, getPublishedTopicTitles } from '../../db/index.js';
 import { Stage } from '../../workflow/machine.js';
 import { handleTopicSelection } from '../../workflow/stages/topic-selection.js';
 
@@ -152,7 +152,8 @@ export async function handleModeButton(interaction: ButtonInteraction): Promise<
     });
 
     try {
-      const results = await searchWhiskyTrends();
+      const excludeTopics = getPublishedTopicTitles();
+      const results = await searchWhiskyTrends(excludeTopics);
       await showSearchResults(interaction, issueId, userId, results, 'trend');
     } catch (error) {
       console.error('Trend search failed:', error);
@@ -176,7 +177,8 @@ export async function handleKeywordModal(interaction: ModalSubmitInteraction): P
   await interaction.deferReply();
 
   try {
-    const results = await searchByKeyword(keyword);
+    const excludeTopics = getPublishedTopicTitles();
+    const results = await searchByKeyword(keyword, excludeTopics);
 
     // Save keyword for later use
     const existingDataRow = getStageData(issueId, Stage.TOPIC_SELECTION);

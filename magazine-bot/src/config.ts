@@ -11,6 +11,8 @@ const envSchema = z.object({
   FIGMA_FILE_KEY: z.string().optional(),
   API_PORT: z.coerce.number().default(3000),
   BRAVE_SEARCH_API_KEY: z.string().optional(),
+  NAVER_CLIENT_ID: z.string().optional(),
+  NAVER_CLIENT_SECRET: z.string().optional(),
 });
 
 export type Config = z.infer<typeof envSchema>;
